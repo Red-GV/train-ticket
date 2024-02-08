@@ -7,16 +7,8 @@ spring:
   data:
     mongodb:
       host: ts-food-map-mongo
-#      username: user
-#      password: ${MONGODB_PASSWORD}
-      database: ts
+      database: ts-food-map-mongo
       port: 27017
 
 swagger:
   controllerPackage: food.controller
-
-opentracing:
-  jaeger:
-    udp-sender:
-      host: jaeger
-      port: 6831

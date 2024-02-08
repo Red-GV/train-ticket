@@ -4,9 +4,7 @@ spring:
   data:
     mongodb:
       host: ts-route-mongo
-#      username: user
-#      password: ${MONGODB_PASSWORD}
-      database: ts
+      database: ts-route-mongo
       port: 27017
 
 # HTTP Server
@@ -15,9 +13,3 @@ server:
 
 swagger:
   controllerPackage: route.controller
-
-opentracing:
-  jaeger:
-    udp-sender:
-      host: jaeger
-      port: 6831

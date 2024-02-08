@@ -4,9 +4,7 @@ spring:
   data:
     mongodb:
       host: ts-price-mongo
-#      username: user
-#      password: ${MONGODB_PASSWORD}
-      database: ts
+      database: ts-price-mongo
       port: 27017
 
 
@@ -16,9 +14,3 @@ server:
 
 swagger:
   controllerPackage: price.controller
-
-opentracing:
-  jaeger:
-    udp-sender:
-      host: jaeger
-      port: 6831

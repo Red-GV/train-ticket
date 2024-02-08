@@ -8,15 +8,7 @@ spring:
   data:
     mongodb:
       host: ts-travel2-mongo
-#      username: user
-#      password: ${MONGODB_PASSWORD}
-      database: ts
+      database: ts-travel2-mongo
       port: 27017
 swagger:
   controllerPackage: travel2.controller
-
-opentracing:
-  jaeger:
-    udp-sender:
-      host: jaeger
-      port: 6831

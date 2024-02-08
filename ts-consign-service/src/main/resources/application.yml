@@ -4,7 +4,7 @@ spring:
   data:
     mongodb:
       host: ts-consign-mongo
-      database: ts
+      database: ts-consign-mongo
       port: 27017
 
 
@@ -14,9 +14,3 @@ server:
 
 swagger:
   controllerPackage: consign.controller
-
-opentracing:
-  jaeger:
-    udp-sender:
-      host: jaeger
-      port: 6831

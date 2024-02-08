@@ -8,9 +8,7 @@ spring:
   data:
     mongodb:
       host: ts-order-other-mongo
-#      username: user
-#      password: ${MONGODB_PASSWORD}
-      database: ts
+      database: ts-order-other-mongo
       port: 27017
 
 #  rabbitmq:
@@ -39,9 +37,3 @@ spring:
 
 swagger:
   controllerPackage: other.controller
-
-opentracing:
-  jaeger:
-    udp-sender:
-      host: jaeger
-      port: 6831
