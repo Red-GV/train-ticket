@@ -13,6 +13,7 @@ import route.repository.RouteRepository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
 
 /**
  * @author fdse
@@ -56,10 +57,14 @@ public class RouteServiceImpl implements RouteService {
 
             return new Response<>(1, "Save Success", route);
         } else {
-            Route route = routeRepository.findById(info.getId());
-            if (route == null) {
+            Route route;
+            Optional<Route> opRoute = routeRepository.findById(info.getId());
+
+            if (!opRoute.isPresent()) {
                 route = new Route();
                 route.setId(info.getId());
+            } else {
+                route = opRoute.get();
             }
 
             route.setStartStationId(info.getStartStation());
@@ -75,8 +80,8 @@ public class RouteServiceImpl implements RouteService {
     @Override
     public Response deleteRoute(String routeId, HttpHeaders headers) {
         routeRepository.removeRouteById(routeId);
-        Route route = routeRepository.findById(routeId);
-        if (route == null) {
+        Optional<Route> opRoute = routeRepository.findById(routeId);
+        if (!opRoute.isPresent()) {
             return new Response<>(1, "Delete Success", routeId);
         } else {
             return new Response<>(0, "Delete failed, Reason unKnown with this routeId", routeId);
@@ -85,11 +90,11 @@ public class RouteServiceImpl implements RouteService {
 
     @Override
     public Response getRouteById(String routeId, HttpHeaders headers) {
-        Route route = routeRepository.findById(routeId);
-        if (route == null) {
+        Optional<Route> opRoute = routeRepository.findById(routeId);
+        if (!opRoute.isPresent()) {
             return new Response<>(0, "No content with the routeId", null);
         } else {
-            return new Response<>(1, success, route);
+            return new Response<>(1, success, opRoute.get());
         }
 
     }

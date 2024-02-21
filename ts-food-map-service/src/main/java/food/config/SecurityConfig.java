@@ -14,8 +14,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import static org.springframework.web.cors.CorsConfiguration.ALL;
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
@@ -27,30 +30,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
-    /**
-     *  allow cors domain
-     * header 在默认的情况下只能从头部取出6个字段，想要其他字段只能自己在头里指定
-     * credentials 默认不发送Cookie, 如果需要Cookie,这个值只能为true
-     * 本次请求检查的有效期
-     *
-     * @return
-     */
-    @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        return new WebMvcConfigurerAdapter() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**")
-                        .allowedOrigins(ALL)
-                        .allowedMethods(ALL)
-                        .allowedHeaders(ALL)
-                        .allowCredentials(false)
-                        .maxAge(3600);
-            }
-        };
-    }
-
 
     @Override
     protected void configure(HttpSecurity httpSecurity) throws Exception {
@@ -71,4 +50,19 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         // close cache
         httpSecurity.headers().cacheControl();
     }
+
+    @Bean
+	CorsConfigurationSource corsConfigurationSource() {
+		CorsConfiguration configuration = new CorsConfiguration();
+
+		configuration.setAllowedOrigins(Arrays.asList(CorsConfiguration.ALL));
+		configuration.setAllowedMethods(Arrays.asList(CorsConfiguration.ALL));
+        configuration.setAllowedHeaders(Arrays.asList(CorsConfiguration.ALL));
+        configuration.setAllowCredentials(false);
+        configuration.setMaxAge(Long.valueOf(3600));
+
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		return source;
+	}
 }

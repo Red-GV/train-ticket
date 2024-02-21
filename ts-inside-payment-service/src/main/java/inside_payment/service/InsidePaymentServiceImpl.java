@@ -337,8 +337,8 @@ public class InsidePaymentServiceImpl implements InsidePaymentService {
 
     @Override
     public void initPayment(Payment payment, HttpHeaders headers) {
-        Payment paymentTemp = paymentRepository.findById(payment.getId());
-        if (paymentTemp == null) {
+        Optional<Payment> opPaymentTemp = paymentRepository.findById(payment.getId());
+        if (!opPaymentTemp.isPresent()) {
             paymentRepository.save(payment);
         } else {
             InsidePaymentServiceImpl.LOGGER.info("[Inside Payment Service][Init Payment] Already Exists: {}", payment.getId());

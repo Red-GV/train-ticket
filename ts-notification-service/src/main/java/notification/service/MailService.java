@@ -43,6 +43,6 @@ public class MailService {
         helper.setFrom("fdse_microservices@163.com");
         helper.setSubject(mail.getMailSubject());
 
-        sender.send(message);
+        // sender.send(message);
     }
 }

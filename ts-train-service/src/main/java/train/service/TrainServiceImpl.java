@@ -7,6 +7,7 @@ import train.entity.TrainType;
 import train.repository.TrainTypeRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class TrainServiceImpl implements TrainService {
@@ -18,7 +19,7 @@ public class TrainServiceImpl implements TrainService {
     @Override
     public boolean create(TrainType trainType, HttpHeaders headers) {
         boolean result = false;
-        if (repository.findById(trainType.getId()) == null) {
+        if (!repository.findById(trainType.getId()).isPresent()) {
             TrainType type = new TrainType(trainType.getId(), trainType.getEconomyClass(), trainType.getConfortClass());
             type.setAverageSpeed(trainType.getAverageSpeed());
             repository.save(type);
@@ -29,33 +30,36 @@ public class TrainServiceImpl implements TrainService {
 
     @Override
     public TrainType retrieve(String id, HttpHeaders headers) {
-        if (repository.findById(id) == null) {
+        Optional<TrainType> opTrainType = repository.findById(id);
+        if (!opTrainType.isPresent()) {
             return null;
         } else {
-            return repository.findById(id);
+            return opTrainType.get();
         }
     }
 
     @Override
     public boolean update(TrainType trainType, HttpHeaders headers) {
-        boolean result = false;
-        if (repository.findById(trainType.getId()) != null) {
-            TrainType type = new TrainType(trainType.getId(), trainType.getEconomyClass(), trainType.getConfortClass());
+        Optional<TrainType> opTrainType = repository.findById(trainType.getId());
+        if (opTrainType.isPresent()) {
+            TrainType type = opTrainType.get();
+            type.setEconomyClass(trainType.getEconomyClass());
+            type.setConfortClass(trainType.getConfortClass());
             type.setAverageSpeed(trainType.getAverageSpeed());
             repository.save(type);
-            result = true;
+            return true;
         }
-        return result;
+        return false;
     }
 
     @Override
     public boolean delete(String id, HttpHeaders headers) {
-        boolean result = false;
-        if (repository.findById(id) != null) {
+        Optional<TrainType> opTrainType = repository.findById(id);
+        if (opTrainType.isPresent()) {
             repository.deleteById(id);
-            result = true;
+            return true;
         }
-        return result;
+        return false;
     }
 
     @Override
