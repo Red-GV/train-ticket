@@ -1,17 +1,19 @@
-FROM node
+FROM node:20
 
-RUN /bin/cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo 'Asia/Shanghai' >/etc/timezone
-
-RUN mkdir -p /app
 WORKDIR /app
 
-ADD ./node_modules /app/node_modules
-ADD ./package.json /app/
-ADD ./public /app/public
-# RUN npm install
+COPY bin/ bin/
+COPY public/ public/
+COPY app.js app.js
+COPY package.json package.json
 
-ADD ./bin /app/bin
-ADD ./app.js /app/
-CMD [ "npm", "start" ]
+RUN npm install
+RUN npm install --save @opentelemetry/api \
+        @opentelemetry/auto-instrumentations-node
+
+ENV OTEL_NODE_RESOURCE_DETECTORS="none"
+ENV NODE_OPTIONS="--require @opentelemetry/auto-instrumentations-node/register"
 
 EXPOSE 16108
+
+CMD [ "npm", "start" ]

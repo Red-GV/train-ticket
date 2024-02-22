@@ -1,53 +1,101 @@
 package main
 
 import (
-	"github.com/hoisie/web"
-	//"labix.org/v2/mgo"
-	//"labix.org/v2/mgo/bson"
-	//"fmt"
+	"context"
+	"errors"
+	"io"
+	"log"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"time"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
-
-//const (
-//	MONGODB_URL = "ts-news-mongo:27017"
-//)
-
-//func getNews(val string) string {
-//
-
-//	session, err := mgo.Dial(MONGODB_URL)
-//	if err != nil {
-//		panic(err)
-//	}
-//	defer session.Close()
-//
-//	session.SetMode(mgo.Monotonic, true)
-//	// db := session.DB("xtest")
-//	// collection := db.C("xtest")
-//	c := session.DB("xtest").C("xtest")
-//
-
-//	 var personAll []News
-//	 err = c.Find(nil).All(&personAll)
-//	 for i := 0; i < len(personAll); i++ {
-//	 	fmt.Println("Person ", personAll[i].Name, personAll[i].Phone)
-//	 }
-//
-//}
 
 type News struct {
 	Title   string `bson:"Title"`
 	Content string `bson:"Content"`
 }
 
-func hello(val string) string {
-	var str = []byte(`[
-                       {"Title": "News Service Complete", "Content": "Congratulations:Your News Service Complete"},
-                       {"Title": "Total Ticket System Complete", "Content": "Just a total test"}
-                    ]`)
-	return string(str)
+func main() {
+	if err := run(); err != nil {
+		log.Fatalln(err)
+	}
 }
 
-func main() {
-	web.Get("/(.*)", hello)
-	web.Run("0.0.0.0:12862")
+func run() (err error) {
+	// Handle SIGINT (CTRL+C) gracefully.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	// Set up OpenTelemetry.
+	otelShutdown, err := setupOTelSDK(ctx)
+	if err != nil {
+		return
+	}
+	// Handle shutdown properly so nothing leaks.
+	defer func() {
+		err = errors.Join(err, otelShutdown(context.Background()))
+	}()
+
+	// Start HTTP server.
+	srv := &http.Server{
+		Addr:         ":12862",
+		BaseContext:  func(_ net.Listener) context.Context { return ctx },
+		ReadTimeout:  time.Second,
+		WriteTimeout: 10 * time.Second,
+		Handler:      newHTTPHandler(),
+	}
+	srvErr := make(chan error, 1)
+	go func() {
+		srvErr <- srv.ListenAndServe()
+	}()
+
+	// Wait for interruption.
+	select {
+	case err = <-srvErr:
+		// Error when starting HTTP server.
+		return
+	case <-ctx.Done():
+		// Wait for first CTRL+C.
+		// Stop receiving signal notifications as soon as possible.
+		stop()
+	}
+
+	// When Shutdown is called, ListenAndServe immediately returns ErrServerClosed.
+	err = srv.Shutdown(context.Background())
+	return
+}
+
+func hello(w http.ResponseWriter, r *http.Request) {
+	response := `[
+		{"Title": "News Service Complete", "Content": "Congratulations:Your News Service Complete"},
+		{"Title": "Total Ticket System Complete", "Content": "Just a total test"}
+	]`
+
+	if _, err := io.WriteString(w, response); err != nil {
+		log.Printf("Write failed: %v\n", err)
+	}
+}
+
+func newHTTPHandler() http.Handler {
+	mux := http.NewServeMux()
+
+	// handleFunc is a replacement for mux.HandleFunc
+	// which enriches the handler's HTTP instrumentation with the pattern as the http.route.
+	handleFunc := func(pattern string, handlerFunc func(http.ResponseWriter, *http.Request)) {
+		// Configure the "http.route" for the HTTP instrumentation.
+		handler := otelhttp.WithRouteTag(pattern, http.HandlerFunc(handlerFunc))
+		mux.Handle(pattern, handler)
+	}
+
+	// Register handlers.
+	handleFunc("/", hello)
+
+	// Add HTTP instrumentation for the whole server.
+	handler := otelhttp.NewHandler(mux, "/")
+
+	return handler
 }
