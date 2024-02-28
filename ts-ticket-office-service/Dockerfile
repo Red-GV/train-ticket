@@ -11,7 +11,6 @@ RUN npm install
 RUN npm install --save @opentelemetry/api \
         @opentelemetry/auto-instrumentations-node
 
-ENV OTEL_NODE_RESOURCE_DETECTORS="none"
 ENV NODE_OPTIONS="--require @opentelemetry/auto-instrumentations-node/register"
 
 EXPOSE 16108

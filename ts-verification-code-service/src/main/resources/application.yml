@@ -4,6 +4,11 @@ server:
 spring:
   application:
     name: ts-verification-code-service
+  cache:
+    cache-names: tokens
+    caffeine:
+      maximumSize: 1000
+      expiresAfterAccess: 600s
 
 swagger:
   controllerPackage: verifycode.controller

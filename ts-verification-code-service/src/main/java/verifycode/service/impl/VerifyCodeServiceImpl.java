@@ -1,11 +1,10 @@
 package verifycode.service.impl;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
 import verifycode.service.VerifyCodeService;
 import verifycode.util.CookieUtil;
 
@@ -17,9 +16,9 @@ import java.awt.image.BufferedImage;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * @author fdse
@@ -32,15 +31,6 @@ public class VerifyCodeServiceImpl implements VerifyCodeService {
 
     String ysbCaptcha = "YsbCaptcha";
 
-    /**
-     * build local cache
-     */
-    public Cache<String, String> cacheCode = CacheBuilder.newBuilder()
-            // max  size
-            .maximumSize(CAPTCHA_EXPIRED)
-            .expireAfterAccess(CAPTCHA_EXPIRED, TimeUnit.SECONDS)
-            .build();
-
     private static char mapTable[] = {
             'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
             'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W',
@@ -48,50 +38,9 @@ public class VerifyCodeServiceImpl implements VerifyCodeService {
 
     @Override
     public Map<String, Object> getImageCode(int width, int height, OutputStream os, HttpServletRequest request, HttpServletResponse response, HttpHeaders headers) {
-        Map<String, Object> returnMap = new HashMap<>();
-        if (width <= 0) {
-            width = 60;
-        }
-        if (height <= 0) {
-            height = 20;
-        }
-        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-
-        Graphics g = image.getGraphics();
-
-        Random random = new Random(); //NOSONAR
-
-        g.setColor(getRandColor(200, 250));
-        g.fillRect(0, 0, width, height);
-
-        g.setFont(new Font("Times New Roman", Font.PLAIN, 18));
-
-        g.setColor(getRandColor(160, 200));
-        for (int i = 0; i < 168; i++) {
-            int x = random.nextInt(width);
-            int y = random.nextInt(height);
-            int xl = random.nextInt(12);
-            int yl = random.nextInt(12);
-            g.drawLine(x, y, x + xl, y + yl);
-        }
-
-        String strEnsure = "";
-
-        for (int i = 0; i < 4; ++i) {
-            strEnsure += mapTable[(int) (mapTable.length * Math.random())];
-
-            g.setColor(new Color(20 + random.nextInt(110), 20 + random.nextInt(110), 20 + random.nextInt(110)));
-
-            String str = strEnsure.substring(i, i + 1);
-            g.drawString(str, 13 * i + 6, 16);
-        }
-
-        g.dispose();
-        returnMap.put("image", image);
-        returnMap.put("strEnsure", strEnsure);
-
-        Cookie cookie = CookieUtil.getCookieByName(request, ysbCaptcha);
         String cookieId;
+        Cookie cookie = CookieUtil.getCookieByName(request, ysbCaptcha);
+        
         if (cookie == null) {
             cookieId = UUID.randomUUID().toString().replace("-", "").toUpperCase();
             CookieUtil.addCookie(response, ysbCaptcha, cookieId, CAPTCHA_EXPIRED);
@@ -103,16 +52,61 @@ public class VerifyCodeServiceImpl implements VerifyCodeService {
                 cookieId = cookie.getValue();
             }
         }
+ 
+        if (width <= 0) {
+            width = 60;
+        }
+        if (height <= 0) {
+            height = 20;
+        }
+
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        
+        Graphics g = image.getGraphics();
+
+        g.setColor(getRandColor(200, 250));
+        g.fillRect(0, 0, width, height);
+        g.setFont(new Font("Times New Roman", Font.PLAIN, 18));
+
+        g.setColor(getRandColor(160, 200));
+        for (int i = 0; i < 168; i++) {
+            int x = ThreadLocalRandom.current().nextInt(width + 1);
+            int y = ThreadLocalRandom.current().nextInt(height + 1);
+            int xl = ThreadLocalRandom.current().nextInt(13);
+            int yl = ThreadLocalRandom.current().nextInt(13);
+            
+            g.drawLine(x, y, x + xl, y + yl);
+        }
+
+        String strEnsure = code(cookieId);
         VerifyCodeServiceImpl.LOGGER.info(" {}  ___ st", strEnsure);
-        cacheCode.put(cookieId, strEnsure);
+        
+        for (int i = 0; i < 4; ++i) {
+            g.setColor(new Color(
+                20 + ThreadLocalRandom.current().nextInt(0, 111),
+                20 + ThreadLocalRandom.current().nextInt(0, 111),
+                20 + ThreadLocalRandom.current().nextInt(0, 111))
+            );
+
+            String str = strEnsure.substring(i, i + 1);
+            g.drawString(str, 13 * i + 6, 16);
+        }
+
+        g.dispose();
+
+        Map<String, Object> returnMap = new HashMap<>();
+        returnMap.put("image", image);
+        returnMap.put("strEnsure", strEnsure);
+
         return returnMap;
     }
 
     @Override
     public boolean verifyCode(HttpServletRequest request, HttpServletResponse response, String receivedCode, HttpHeaders headers) {
         boolean result = false;
-        Cookie cookie = CookieUtil.getCookieByName(request, ysbCaptcha);
         String cookieId;
+        Cookie cookie = CookieUtil.getCookieByName(request, ysbCaptcha);
+        
         if (cookie == null) {
             cookieId = UUID.randomUUID().toString().replace("-", "").toUpperCase();
             CookieUtil.addCookie(response, ysbCaptcha, cookieId, CAPTCHA_EXPIRED);
@@ -120,30 +114,31 @@ public class VerifyCodeServiceImpl implements VerifyCodeService {
             cookieId = cookie.getValue();
         }
 
-        String code = cacheCode.getIfPresent(cookieId);
+        String code = code(cookieId);
         LOGGER.info("GET Code By cookieId " + cookieId + "   is :" + code);
-        if (code == null) {
-            return false;
-        }
-        if (code.equalsIgnoreCase(receivedCode)) {
-            result = true;
-        }
-        return result;
+        return code.equalsIgnoreCase(receivedCode);
     }
 
+    @Cacheable("tokens")
+    public String code(String cookieId) {
+        String code = "";
+        for (int i = 0; i < 4; ++i) {
+            code += mapTable[ThreadLocalRandom.current().nextInt(0, mapTable.length)];
+        }
+        return code;
+    }
 
     static Color getRandColor(int fc, int bc) {
-        Random random = new Random(); //NOSONAR
         if (fc > 255) {
             fc = 255;
         }
         if (bc > 255) {
             bc = 255;
         }
-        int r = fc + random.nextInt(bc - fc);
-        int g = fc + random.nextInt(bc - fc);
-        int b = fc + random.nextInt(bc - fc);
+
+        int r = fc + ThreadLocalRandom.current().nextInt(0, bc - fc + 1);
+        int g = fc + ThreadLocalRandom.current().nextInt(0, bc - fc + 1);
+        int b = fc + ThreadLocalRandom.current().nextInt(0, bc - fc + 1);
         return new Color(r, g, b);
     }
-
 }
