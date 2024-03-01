@@ -8,7 +8,7 @@ import org.springframework.http.HttpHeaders;
 import verifycode.service.impl.VerifyCodeServiceImpl;
 
 import javax.servlet.*;
-import javax.servlet.http.*;
+import jakarta.servlet.http.*;
 import java.io.*;
 import java.security.Principal;
 import java.util.Collection;

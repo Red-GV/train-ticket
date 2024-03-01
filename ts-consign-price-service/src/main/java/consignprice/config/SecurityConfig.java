@@ -1,24 +1,29 @@
 package consignprice.config;
 
 import edu.fudan.common.security.jwt.JWTFilter;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.Arrays;
+
+import static org.springframework.security.config.Customizer.withDefaults;
+import static org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher;
 
 /**
  * @author fdse
@@ -26,7 +31,7 @@ import java.util.Arrays;
 @Configuration
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
+public class SecurityConfig {
 
     /**
      * load password encoder
@@ -38,24 +43,38 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         return new BCryptPasswordEncoder();
     }
 
-    @Override
-    protected void configure(HttpSecurity httpSecurity) throws Exception {
-        httpSecurity.httpBasic().disable()
-                // close default csrf
-                .csrf().disable()
-                // close session
-                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                .and()
-                .authorizeRequests()
-                .antMatchers("/api/v1/consignpriceservice/**").hasAnyRole("ADMIN", "USER")
-                .antMatchers("/swagger-ui.html", "/webjars/**", "/images/**",
-                        "/configuration/**", "/swagger-resources/**", "/v2/**").permitAll()
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .addFilterBefore(new JWTFilter(), UsernamePasswordAuthenticationFilter.class)
+            .authorizeHttpRequests((authorize) -> authorize
+                .requestMatchers(
+                    antMatcher("/api/v1/consignpriceservice/**")
+                ).hasAnyRole("ADMIN", "USER")
+                .requestMatchers(
+                    antMatcher("/swagger-ui.html"), 
+                    antMatcher("/webjars/**"), 
+                    antMatcher("/images/**"),
+                    antMatcher("/configuration/**"), 
+                    antMatcher("/swagger-resources/**"), 
+                    antMatcher("/v2/**")
+                ).permitAll()
                 .anyRequest().authenticated()
-                .and()
-                .addFilterBefore(new JWTFilter(), UsernamePasswordAuthenticationFilter.class);
-
-        // close cache
-        httpSecurity.headers().cacheControl();
+            )
+            .cors(withDefaults())
+            .csrf((csrf) -> csrf
+                .disable()
+            )
+            .headers((headers) -> headers
+                .cacheControl(withDefaults())
+            )
+            .httpBasic((httpBasic) -> httpBasic
+                .disable()
+            )
+            .sessionManagement((sessionManagement) -> sessionManagement
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            );
+        return http.build();
     }
 
     @Bean

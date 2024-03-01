@@ -2,7 +2,7 @@ package price.entity;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 
 /**
  * @author fdse

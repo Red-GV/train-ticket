@@ -122,7 +122,7 @@ public class StationServiceImpl implements StationService {
         ArrayList<String> result = new ArrayList<>();
         for (int i = 0; i < idList.size(); i++) {
             Optional<Station> opStation = repository.findById(idList.get(i));
-            if (!opStation.isPresent()) {
+            if (opStation.isPresent()) {
                 result.add(opStation.get().getName());
             }
         }

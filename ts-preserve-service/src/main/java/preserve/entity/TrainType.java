@@ -2,7 +2,7 @@ package preserve.entity;
 
 import lombok.Data;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 
 /**
  * @author fdse
